@@ -1,6 +1,7 @@
-import sqlite3
 import os
 import hashlib
+
+import main
 
 cursor = None
 connection = None
@@ -12,7 +13,7 @@ def hash_password(password):
     return alg.hexdigest()
 
 
-class authenticationInterface:
+class AuthenticationInterface:
     def __init__(self, crs, conn):
         global cursor, connection
         cursor, connection = crs, conn
@@ -75,25 +76,24 @@ class authenticationInterface:
                 print("That was an incorrect choice. Please choose again.")
     def get_authentication(self):
         global cursor
+        while True:
+            user_name = input("\n\nPlease Enter Your Username: \n")
+            user_password = input("Please Enter Your Password:\n")
+            user_password = hash_password(user_password)
+            cursor.execute('''
+            SELECT * FROM users WHERE uid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )
+            users = cursor.fetchall()
+            cursor.execute('''
+            SELECT * FROM artists WHERE aid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )
+            artists = cursor.fetchall()
+            if len(users) != 1 and len(artists) != 1:
+                print("User could not be authenticated.")
+                return [], []
+            else:
+                return users, artists
 
-        user_name = input("\n\nPlease Enter Your Username: \n")
-        user_password = input("Please Enter Your Password:\n")
-        user_password = hash_password( user_password )
-        cursor.execute('''
-        SELECT * FROM users WHERE uid = :uname AND authcode = :pw;''', {'uname': user_name, 'pw': user_password}, )
-        ans = cursor.fetchall()
-        if len(ans) != 1:
-            print("Authentication Failed")
-            return False
-        else:
-            pass
 
-    def get_pwd_add_user(self, tableNames ):
-        global cursor
-
-        password = hash_password( input("Please enter a password:\n ") )
-        # Find out what tables we are adding the user too.
-    def check_access( self, cursor, user_name ):
+    def check_access( self, user_name ):
         # Get the users interface access after they have been authenticated.
         cursor.execute("SELECT uid FROM users where uid = :username;", {'username': user_name})
         user = cursor.fetchone()

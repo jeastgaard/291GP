@@ -6,11 +6,16 @@ import artistInterface
 cursor = None
 connection = None
 
-def create_connection( path ):
+USER = 55
+ARTIST = 66
+
+
+def create_connection(path):
     global connection, cursor
     # <todo> Add some error checking here!!
-    connection = sqlite3.connect( path )
+    connection = sqlite3.connect(path)
     cursor = connection.cursor()
+
 
 def close_database():
     # <todo> Add some error checking here!!
@@ -18,14 +23,15 @@ def close_database():
     connection.commit()
     connection.close()
 
-if __name__ == '__main__':
-    db_path ='./project.db'
-    authenticated = False;
-    create_connection( db_path )
 
-    auth_interface = authentication.authenticationInterface(cursor, connection)
-    print( '''Welcome to the First Group Project's Song Player!\n
-    Please be aware, we don't actually play any music....''' )
+if __name__ == '__main__':
+    db_path = './project.db'
+    authenticated = False;
+    create_connection(db_path)
+
+    auth_interface = authentication.AuthenticationInterface(cursor, connection)
+    print('''Welcome to the First Group Project's Song Player!\n
+    Please be aware, we don't actually play any music....''')
 
     while not authenticated:
         login_choice = input("Login (1) or Sign Up(2)? (Q) to quite\n")
@@ -33,7 +39,32 @@ if __name__ == '__main__':
         if login_choice.lower() == 'q':
             break
         elif login_choice == '1':
-            auth_interface.get_authentication()
+            user_info, artist_info = auth_interface.get_authentication()
+
+            # If both info's are populated then user needs to choose interface.
+            if len(user_info) > 0 and len(artist_info) > 0:
+                choice_of_interface = input(
+                    "We see here that you are registered as a user and an artist.\nWould you like" +
+                    " to proceed as a user(1) or artist(2)? Please enter your choice below: \n")
+                # Go into either artist interface or User interface based on the choice of user.
+                while True:
+                    if choice_of_interface == '1':
+                        # Launch the user interface here.
+                        print("Debug:: You chose user.")
+                        break
+                    elif choice_of_interface == '2':
+                        # Launch the artist interface here.
+                        print("Debug:: You chose artist.")
+                        break
+                    else:
+                        print("That was not a valid choice. Please try again!\n\n")
+            elif len(user_info) > 0:
+                # Launch the user here
+                print("You are a user")
+            elif len(artist_info) > 0:
+                # Launch the artist interface here
+                print("You are an artist")
+
         elif login_choice == '2':
             auth_interface.create_new_user()
         else:
