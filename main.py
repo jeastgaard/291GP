@@ -6,9 +6,6 @@ import artistInterface
 cursor = None
 connection = None
 
-USER = 55
-ARTIST = 66
-
 
 def create_connection(path):
     global connection, cursor
@@ -44,11 +41,12 @@ if __name__ == '__main__':
 
             # If both info's are populated then user needs to choose interface.
             if len(user_info) > 0 and len(artist_info) > 0:
-                choice_of_interface = input(
-                    "We see here that you are registered as a user and an artist.\nWould you like" +
-                    " to proceed as a user(1) or artist(2)? Please enter your choice below: \n")
-                # Go into either artist interface or User interface based on the choice of user.
+
                 while True:
+                    choice_of_interface = input(
+                        "We see here that you are registered as a user and an artist.\nWould you like" +
+                        " to proceed as a user(1) or artist(2)? Please enter your choice below: \n")
+                    # Go into either artist interface or User interface based on the choice of user.
                     if choice_of_interface == '1':
                         # Launch the user interface here.
                         print("Debug:: You chose user.")
