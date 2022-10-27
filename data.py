@@ -15,7 +15,7 @@ cursor = None
 
 def main():
     global connection, cursor
-    path = './project14.db'
+    path = './project15.db'
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
     
@@ -23,8 +23,8 @@ def main():
     #insert_data()
     
     
-    search_songs_Playlists()
-    
+    #search_songs_Playlists()
+    search_artist()
     connection.commit()
     return
 
@@ -149,7 +149,80 @@ def search_songs_Playlists():
     #song_action()
  
     connection.commit()
+ 
+def search_artist():
+    global connection, cursor
     
+    '''
+    -- User provides 1 or more unique keywords 
+    -- System retrieves all artists that have any of the given keywords or their songs have any of the given keywords
+    -- for each artist, return the artist id, name, nationality, and number of songs performed
+    -- results should be ordered based on the number of matching keywords with the artist with the most matches displayed first
+    -- user should be able to select an artist and perform an artist_action()
+    '''   
+    
+    def add_artist_total_songs_performed():
+        global connection, cursor
+        cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+                .format( tn="artists", cn="total_songs_performed", ct="int" ) )
+        connection.commit()
+        cursor.execute('''
+                    UPDATE artists
+                    SET total_songs_performed = (SELECT COUNT(*) FROM perform WHERE perform.aid = artists.aid)
+                    ''')
+        connection.commit()
+    #add_artist_total_songs_performed()
+    
+    user_input = input("search for artists: ")
+  
+    #user_input = "love cold fire"
+    
+    user_input = user_input.split()
+    query = '''
+    select * from artists where name like '%{0}%'
+    '''.format(user_input[0])
+    for i in range(1, len(user_input)):
+        query = query + '''
+    union
+    select * from artists where name like '%{0}%'
+    '''.format(user_input[i])
+    query = query + '''
+    union
+    select * from artists where aid in (SELECT aid FROM songs WHERE title like '%{0}%')
+    '''.format(user_input[0])
+    for i in range(1, len(user_input)):
+        query = query + '''
+    union
+    select * from artists where aid in (SELECT aid FROM songs WHERE title like '%{0}%')
+    '''.format(user_input[i])
+    
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+    
+    def orderOutput(results):
+        output = []
+        for i in range(len(results)):
+            output.append([0, results[i]])
+        for i in range(len(results)):
+            for j in range(len(user_input)):
+                if user_input[j].lower() in results[i][1].lower():
+                    output[i][0] += 1
+        output.sort(reverse = True)
+        return output
+    
+    print("Search Results:")
+    results = orderOutput(results)
+    #for row in results:
+        
+        #print(row[0], row[1], row[2], row[3])
+        
+    for i in range(len(results)):
+        if i < 5:
+            print(results[i][1][0], results[i][1][1], results[i][1][2],results[i][1][3])
+    #artist_action()
+    
+    connection.commit()
     
 def define_tables():
     global connection, cursor
@@ -1229,7 +1302,7 @@ insert into artists values ('a1', 'Lady Gaga', 'United States'),
  ('a21', 'Echosmith', 'American'),
  ('a22', 'The Wanted', 'British'),
  ('a23', 'Selena Gomez', 'United States'),
- ('a24', 'Rixton', 'British'),
+ ('a24', 'Rixton', 'Brds w2itish'),
  ('a25', 'American Authors', 'American'),
  ('a26', 'Cobra Starship', 'American'),
  ('a27', 'Captial Cities', 'American'),
