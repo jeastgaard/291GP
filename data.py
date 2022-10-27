@@ -19,8 +19,8 @@ def main():
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
     
-    define_tables()
-    insert_data()
+    #define_tables()
+    #insert_data()
     
     
     search_songs_Playlists()
@@ -44,33 +44,58 @@ def search_songs_Playlists():
     
     '''
     
-   
-    cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
-            .format( tn="songs", cn="type", ct="String" ) )
-    connection.commit()
-    cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
-            .format( tn="playlists", cn="type", ct="String"))
-    connection.commit()
-    cursor.execute('''
-                   UPDATE songs
-                   SET type = "song"
-                   
-                   ''')
-    connection.commit()
-    cursor.execute('''
-                   UPDATE playlists
-                   SET type = "playlist"
-                                                                
-                   ''')
+    def tableUpdate():
+        global connection, cursor
+        cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+                .format( tn="songs", cn="type", ct="String" ) )
+        connection.commit()
+        cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+                .format( tn="playlists", cn="type", ct="String"))
+        connection.commit()
+        cursor.execute('''
+                    UPDATE songs
+                    SET type = "song"
+                    
+                    ''')
+        connection.commit()
+        cursor.execute('''
+                    UPDATE playlists
+                    SET type = "playlist"
+                                                                    
+                    ''')
+        
+        
+        
+        connection.commit()
+    
+    def add_Song_total_playlists():
+        global connection, cursor
+        cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+                .format( tn="songs", cn="total_playlists", ct="int" ) )
+        connection.commit()
+        cursor.execute('''
+                    UPDATE songs
+                    SET total_playlists = (SELECT COUNT(*) FROM plinclude WHERE plinclude.sid = songs.sid)
+                    ''')
+        connection.commit()
+    
+    def add_Playlist_total_song_duration():
+        global connection, cursor
+        cursor.execute('''
+                    ALTER TABLE playlists
+                    ADD COLUMN total_duration INT
+                    ''')
+        connection.commit()
+        cursor.execute('''
+                    UPDATE playlists
+                    SET total_duration = (SELECT SUM(duration) FROM songs WHERE sid IN (SELECT sid FROM plinclude WHERE pid = playlists.pid))
+                    ''')
+        connection.commit()
     
     
-    
-    connection.commit()
-    
-    
-    
-
-    
+    #tableUpdate()
+    #add_Song_total_playlists()
+    #add_Playlist_total_song_duration()
     
     user_input = input("search for songs or playlists: ")
   
@@ -98,13 +123,29 @@ def search_songs_Playlists():
     cursor.execute(query)
     results = cursor.fetchall()
     
-    print("Search Results:")
-    for row in results:
-        if row[0] in range(1, 1000):
-            print("Song: ", row[0], row[1], row[2], row[3])
-        else:
-            print("Playlist: ", row[0], row[1])
+    def orderOutput(results):
+        output = []
+        for i in range(len(results)):
+            output.append([0, results[i]])
+        for i in range(len(results)):
+            for j in range(len(user_input)):
+                if user_input[j].lower() in results[i][1].lower():
+                    output[i][0] += 1
+        output.sort(reverse = True)
+        return output
     
+    print("Search Results:")
+    results = orderOutput(results)
+    #for row in results:
+        
+        #print(row[0], row[1], row[2], row[3])
+        
+    for i in range(len(results)):
+        if i < 5:
+            if results[i][1][3] == "song":
+                print( results[i][1][3], results[i][1][0], results[i][1][1], results[i][1][2])
+            else:
+                print( results[i][1][3], results[i][1][0], results[i][1][1], results[i][1][4])
     #song_action()
  
     connection.commit()
