@@ -15,17 +15,101 @@ cursor = None
 
 def main():
     global connection, cursor
-    path = './project.db'
+    path = './project14.db'
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
     
     define_tables()
     insert_data()
     
+    
+    search_songs_Playlists()
+    
     connection.commit()
-    connection.close()
+    return
+
+def search_songs_Playlists():
+    global connection, cursor
+    
+    '''
+    -- User provides 1 or more unique keywords 
+    -- System retrieves all songs and playlists that have any of the given keywords
+    -- for each song, return the song id, title, and duration
+    -- for each playlist, return the playlist id, title, and total duration of all songs in the playlist
+    -- each row should indicate whether the result is a song or a playlist
+    -- result should be ordered based on the number of matching keywords with the song/playlist with the most matches displayed first
+    -- if there are more than 5 matching songs/playlists, show the first 5 or let the user choose to see more matches. 
+    -- if a user selects a song, perform a song_action()
+    -- if a user selects a playlist, display the id, title, and duration of all songs in he playlist and the user should be able to perform a song_action()
+    
+    '''
+    
+   
+    cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+            .format( tn="songs", cn="type", ct="String" ) )
+    connection.commit()
+    cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+            .format( tn="playlists", cn="type", ct="String"))
+    connection.commit()
+    cursor.execute('''
+                   UPDATE songs
+                   SET type = "song"
+                   
+                   ''')
+    connection.commit()
+    cursor.execute('''
+                   UPDATE playlists
+                   SET type = "playlist"
+                                                                
+                   ''')
+    
+    
+    
+    connection.commit()
+    
+    
     
 
+    
+    
+    user_input = input("search for songs or playlists: ")
+  
+    #user_input = "love cold fire"
+    
+    user_input = user_input.split()
+    query = '''
+    select * from songs where title like '%{0}%'
+    '''.format(user_input[0])
+    for i in range(1, len(user_input)):
+        query = query + '''
+    union
+    select * from songs where title like '%{0}%'
+    '''.format(user_input[i])
+    query = query + '''
+    union
+    select * from playlists where title like '%{0}%'
+    '''.format(user_input[0])
+    for i in range(1, len(user_input)):
+        query = query + '''
+    union
+    select * from playlists where title like '%{0}%'
+    '''.format(user_input[i])
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+    
+    print("Search Results:")
+    for row in results:
+        if row[0] in range(1, 1000):
+            print("Song: ", row[0], row[1], row[2], row[3])
+        else:
+            print("Playlist: ", row[0], row[1])
+    
+    #song_action()
+ 
+    connection.commit()
+    
+    
 def define_tables():
     global connection, cursor
     
@@ -35,7 +119,7 @@ def define_tables():
     uid		char(4),
     name		text,
     primary key (uid)
-    ),  
+    );
     
     '''
     
@@ -45,7 +129,7 @@ def define_tables():
     title		text,
     duration	int,
     primary key (sid)
-    ),
+    );
     '''
     sessions_query = '''
     CREATE TABLE sessions (
@@ -56,7 +140,7 @@ def define_tables():
     primary key (uid,sno),
     foreign key (uid) references users
         on delete cascade
-    ),
+    );
     
     '''
     listen_query = '''
@@ -68,7 +152,7 @@ def define_tables():
     primary key (uid,sno,sid),
     foreign key (uid,sno) references sessions,
     foreign key (sid) references songs
-    ),
+    );
     
     
     '''
@@ -80,8 +164,7 @@ def define_tables():
     uid		char(4),
     primary key (pid),
     foreign key (uid) references users
-    ),
-    
+    );    
     '''
     plinclude_query = '''
     create table plinclude (
@@ -91,7 +174,7 @@ def define_tables():
     primary key (pid,sid),
     foreign key (pid) references playlists,
     foreign key (sid) references songs
-    ),
+    );
     
     
     '''
@@ -102,7 +185,7 @@ def define_tables():
     name		text,
     nationality	text,
     primary key (aid)
-    ),
+    );
     
     
     '''
@@ -114,11 +197,11 @@ def define_tables():
     primary key (aid,sid),
     foreign key (aid) references artists,
     foreign key (sid) references songs
-    ),
+    );
     '''
     
     cursor.execute(users_query)
-    cursor.execue(songs_query)
+    cursor.execute(songs_query)
     cursor.execute(sessions_query)
     cursor.execute(listen_query)
     cursor.execute(playlists_query)
@@ -234,7 +317,7 @@ def insert_data():
     insert_sessions = '''
     --- Sessions ---
 -- September 2022
-insert into sesssions values ('u10', 1, '2022-09-27', '2022-09-28'),
+insert into sessions values ('u10', 1, '2022-09-27', '2022-09-28'),
  ('u20', 1, '2022-09-25', '2022-09-27'),
  ('u3', 2, '2022-09-24', '2022-09-25'),
  ('u36', 3, '2022-09-24', '2022-09-25'),
@@ -368,7 +451,7 @@ insert into sesssions values ('u10', 1, '2022-09-27', '2022-09-28'),
 --- Listen ---
 -- September 2022 --
 -- Session 1 (11 unique songs)
-insert into listen valuses ('u10', 1, 5, 1.2),
+insert into listen values ('u10', 1, 5, 1.2),
  ('u10', 1, 11, 2.0),
  ('u10', 1, 40, 33),
  ('u10', 1, 25, 14),
@@ -1128,7 +1211,7 @@ insert into artists values ('a1', 'Lady Gaga', 'United States'),
 
     insert_perform = '''
 
-insert into pperform values ('a1', 2),
+insert into perform values ('a1', 2),
  ('a1', 19),
  ('a2', 4),
  ('a3', 3),
@@ -1196,4 +1279,6 @@ insert into pperform values ('a1', 2),
     cursor.execute(insert_artists)
     cursor.execute(insert_perform)
     connection.commit()
-    connection.close()
+   
+    
+main()
