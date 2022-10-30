@@ -23,9 +23,6 @@ def main():
     #insert_data()
     
     
-<<<<<<< Updated upstream
-    search_songs_Playlists()
-=======
     
     #test 1:search for a song / playlist and then perform an action on it
     #search_songs_Playlists()
@@ -36,13 +33,10 @@ def main():
     #test 3: artist actions
     #artist_action()
     
->>>>>>> Stashed changes
     
     connection.commit()
     return
 
-<<<<<<< Updated upstream
-=======
 def select_SID(results):
     sid = []
     for i in range(len(results)):
@@ -50,7 +44,6 @@ def select_SID(results):
             sid.append(results[i][1][0])
     return sid
 #function for searching songs and playlists
->>>>>>> Stashed changes
 def search_songs_Playlists():
     global connection, cursor
     
@@ -157,20 +150,11 @@ def search_songs_Playlists():
         output.sort(reverse = True)
         return output
     
-<<<<<<< Updated upstream
-    print("Search Results:")
-    results = orderOutput(results)
-    #for row in results:
-        
-        #print(row[0], row[1], row[2], row[3])
-        
-=======
 
     
     print("Search Results:")
     results = orderOutput(results)
     selectable_songs = select_SID(results)
->>>>>>> Stashed changes
     for i in range(len(results)):
         if i < 5:
             if results[i][1][3] == "song":
@@ -180,9 +164,7 @@ def search_songs_Playlists():
     #song_action()
  
     connection.commit()
-<<<<<<< Updated upstream
     
-=======
 #function for song action
 def song_action(search_data):
     '''
@@ -499,7 +481,6 @@ def select_artist(results):
     for row in results:
         print(row[0], row[1], row[2])
     connection.commit()
->>>>>>> Stashed changes
     
     print(selectable_SIDs)
     if len(selectable_SIDs) > 0:
