@@ -23,11 +23,34 @@ def main():
     #insert_data()
     
     
+<<<<<<< Updated upstream
     search_songs_Playlists()
+=======
+    
+    #test 1:search for a song / playlist and then perform an action on it
+    #search_songs_Playlists()
+    
+    #test 2: search for an artist
+    search_artist()
+    
+    #test 3: artist actions
+    #artist_action()
+    
+>>>>>>> Stashed changes
     
     connection.commit()
     return
 
+<<<<<<< Updated upstream
+=======
+def select_SID(results):
+    sid = []
+    for i in range(len(results)):
+        if results[i][1][3] == "song":
+            sid.append(results[i][1][0])
+    return sid
+#function for searching songs and playlists
+>>>>>>> Stashed changes
 def search_songs_Playlists():
     global connection, cursor
     
@@ -97,10 +120,10 @@ def search_songs_Playlists():
     #add_Song_total_playlists()
     #add_Playlist_total_song_duration()
     
+    
     user_input = input("search for songs or playlists: ")
   
-    #user_input = "love cold fire"
-    
+
     user_input = user_input.split()
     query = '''
     select * from songs where title like '%{0}%'
@@ -134,12 +157,20 @@ def search_songs_Playlists():
         output.sort(reverse = True)
         return output
     
+<<<<<<< Updated upstream
     print("Search Results:")
     results = orderOutput(results)
     #for row in results:
         
         #print(row[0], row[1], row[2], row[3])
         
+=======
+
+    
+    print("Search Results:")
+    results = orderOutput(results)
+    selectable_songs = select_SID(results)
+>>>>>>> Stashed changes
     for i in range(len(results)):
         if i < 5:
             if results[i][1][3] == "song":
@@ -149,7 +180,333 @@ def search_songs_Playlists():
     #song_action()
  
     connection.commit()
+<<<<<<< Updated upstream
     
+=======
+#function for song action
+def song_action(search_data):
+    '''
+    -- search_data is a list of possible sid's from the search_songs_Playlists() function
+    -- Uses data from search_songs_Playlists()
+    -- User can perform any of these 3 actions after picking which song from the search results
+    -- 1) listen to it
+        -- if selected for listening, a listening event is recorded within the current session.
+        -- a listening event is recorded by either inserting a row to table listen or increasing the listen count of the song by 1
+        
+    -- 2) See more information about the song
+        -- artist(s) who performed the song, song id, title, duration, names of playlists song is in 
+    -- 3) Add the song to a playlist
+        -- when adding a song to a new playlist, a new playlist should be created with a unique id (created by the system) and the uid set to the user who created it
+    '''
+    global connection, cursor
+
+    #test uid
+    uid = 'u9'
+
+
+    song_choice = input("Which of the above songs do you want to select? (enter song id): ")
+    song_choice = int(song_choice)
+    
+    if song_choice in search_data:
+       
+        print("1) Listen to it")
+        print("2) See more information about the song")
+        print("3) Add the song to a playlist")
+        action = int(input("What would you like to do? (enter the number of your choice): "))
+        if action == 1:
+            cursor.execute('''
+            INSERT INTO listen (uid, sno, sid, cnt)
+            VALUES ('{0}', (SELECT COUNT(*) FROM listen WHERE uid = '{0}' AND sid = {1}) + 1, {1}, 1)
+            '''.format(uid, song_choice))
+            connection.commit()
+            print("Song added to listening history")
+        elif action == 2:
+            cursor.execute('''
+            SELECT * FROM songs WHERE sid = {0}
+            '''.format(song_choice))
+            
+            results = cursor.fetchall()
+            print("Song Name:")
+            for row in results:
+                print(row[1])
+            cursor.execute('''
+            SELECT * FROM artists WHERE aid IN (SELECT aid FROM perform WHERE sid = {0})
+            '''.format(song_choice))
+            results = cursor.fetchall()
+            print("Artists: ")
+            for row in results:
+                print(row[1])
+            cursor.execute('''
+            SELECT * FROM playlists WHERE pid IN (SELECT pid FROM plinclude WHERE sid = {0})
+            '''.format(song_choice))
+            results = cursor.fetchall()
+            print("Playlists: ")
+            for row in results:
+                print(row[1])
+        elif action == 3:
+            cursor.execute('''
+            SELECT * FROM playlists WHERE uid like '{0}'
+            '''.format(uid))
+            results = cursor.fetchall()
+            print("Existing Playlists: ")
+            for row in results:
+                print(row[0],row[1])
+            
+            new_playlist = input("Would you like to create a new playlist? (y/n): ")
+            if new_playlist == "y":
+                #set pid to the size of the playlists table + 1
+                cursor.execute('''
+                SELECT * FROM playlists
+                ''')
+                results = cursor.fetchall()
+                pid = len(results) + 1
+                new_playlist_name = input("Enter a name for your new playlist: ")
+                cursor.execute('''
+                INSERT INTO playlists (pid, title, uid)
+                VALUES ({0}, "{1}", "{2}")
+                '''.format(pid, new_playlist_name, uid))
+                connection.commit()
+                print("Song added to new playlist")
+            if new_playlist == "n":
+                pid = input("Enter the pid of the playlist you want to add the song to: ")
+                #check the largest sorder in the playlist and add 1 to it
+                
+                cursor.execute(
+                               '''SELECT * FROM plinclude WHERE pid = {0}'''.format(pid))
+                results = cursor.fetchall()
+                sorder = len(results) + 1
+                cursor.execute('''
+                INSERT OR IGNORE INTO plinclude (pid, sid, sorder)
+                VALUES ({0}, {1}, {2})
+                '''.format(pid, song_choice, sorder))
+                connection.commit()
+                print("Song added to playlist")
+  
+#function for artist actions
+def artist_action():
+    global connection, cursor
+    '''
+      -- Artist actions:
+      -- 1) Add Song
+            -- artist/user provides a title and duration
+            -- new song gets assigned a unique SID by the system
+            -- allow other artists to be included in the song
+            -- allow the song to be added to a playlist
+      -- 2) Check top 3 users/playlists for an artist
+            -- show top 3 listeners based on longest listening time
+            -- show top 3 playlists based on number of songs in the playlist
+              
+      '''
+      
+    def add_song():
+          global connection, cursor
+          #test uid
+          aid = 'a1'
+          
+          #set sid to the size of the songs table + 1
+          cursor.execute('''
+          SELECT * FROM songs
+          ''')
+          results = cursor.fetchall()
+          sid = len(results) + 1
+          #set nationality to the artist's nationality who is logged in
+          cursor.execute('''
+          SELECT nationality FROM artists WHERE aid like '{0}'
+          '''.format(aid))
+          results = cursor.fetchall()
+          nationality = results[0][0]
+          #set title to the title entered by the artist
+          title = input("Enter the title of the song: ")
+          #set duration to the duration entered by the artist
+          duration = int(input("Enter the duration of the song: "))
+          #set aid to the aid of the artist who is logged in
+          cursor.execute('''
+          SELECT aid FROM artists WHERE aid like '{0}'
+          '''.format(aid))
+          results = cursor.fetchall()
+          aid = results[0][0]
+          #insert the song into the songs table
+          cursor.execute('''
+          INSERT INTO songs (sid, title, duration, type)
+          VALUES ({0}, "{1}", {2}, "song")
+          '''.format(sid, title, duration))
+          #insert the artist into the perform table
+          cursor.execute('''
+          INSERT INTO perform (aid, sid)
+          VALUES ("{0}", {1})
+          '''.format(aid, sid))
+          connection.commit()
+          #ask if the artist wants to add any other artists to the song
+          add_more_artists = input("Would you like to add any other artists to this song? (y/n): ")
+          if add_more_artists == "y":
+              add_more_artists = True
+          else:
+              add_more_artists = False
+          while add_more_artists == True:
+              #ask for the aid of the artist to be added
+              aid = input("Enter the aid of the artist you would like to add: ")
+              #insert the artist into the perform table
+              cursor.execute('''
+              INSERT INTO perform (aid, sid)
+              VALUES ({0}, {1})
+              '''.format(aid, sid))
+              connection.commit()
+              #ask if the artist wants to add any other artists to the song
+              add_more_artists = input("Would you like to add any other artists to this song? (y/n):")
+              if add_more_artists == "y":
+                  add_more_artists = True
+              else:
+                  add_more_artists = False
+          connection.commit()                   
+    
+    
+    def top_3_stats():
+          global connection, cursor
+          #test aid
+          aid = 'a1'
+          cursor.execute('''
+          SELECT uid, SUM(cnt) FROM listen WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}") GROUP BY uid ORDER BY SUM(cnt) DESC LIMIT 3
+          '''.format(aid))
+          results = cursor.fetchall()
+          print("Top 3 users based on longest listening time: ")
+          for row in results:
+              print(row[0], row[1])
+          cursor.execute('''
+          SELECT pid, COUNT(sid) FROM plinclude WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}") GROUP BY pid ORDER BY COUNT(sid) DESC LIMIT 3
+          '''.format(aid))
+          results = cursor.fetchall()
+          print("Top 3 playlists based on number of songs in the playlist: ")
+          for row in results:
+              print(row[0], row[1]) 
+          connection.commit()
+          
+   
+    def display_artist_songs():
+        aid = 'a1'
+        cursor.execute('''
+        SELECT * FROM songs WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}")
+        '''.format(aid))
+        results = cursor.fetchall()
+        print("Songs: ")
+        for row in results:
+            print(row[0], row[1], row[2], row[3])
+        
+    #add_song()
+    #show all songs by the artist
+    top_3_stats()
+       
+#function for searching for artists
+def search_artist():
+    global connection, cursor
+    
+    '''
+    -- User provides 1 or more unique keywords 
+    -- System retrieves all artists that have any of the given keywords or the songs they perform have any of the given keywords
+    -- for each artist, return the artist id, name, nationality, and number of songs performed
+    -- results should be ordered based on the number of matching keywords with the artist with the most matches displayed first
+    -- user should be able to select an artist and perform an artist_action()
+    '''   
+    
+    def add_artist_total_songs_performed():
+        global connection, cursor
+        cursor.execute( 'ALTER TABLE {tn} ADD COLUMN {cn} {ct}'\
+                .format( tn="artists", cn="total_songs_performed", ct="int" ) )
+        connection.commit()
+        cursor.execute('''
+                    UPDATE artists
+                    SET total_songs_performed = (SELECT COUNT(*) FROM perform WHERE perform.aid = artists.aid)
+                    ''')
+        connection.commit()
+    def select_AID(results):
+        aid = []
+        for i in range(len(results)):
+                aid.append(results[i][1][0])
+        return aid
+    #add_artist_total_songs_performed()
+    
+    user_input = input("search for artists: ")
+  
+    #user_input = "love cold fire"
+    
+    user_input = user_input.split()
+    query = '''
+    select * from artists where name like '%{0}%'
+    '''.format(user_input[0])
+    for i in range(1, len(user_input)):
+        query = query + '''
+    union
+    select * from artists where name like '%{0}%'
+    '''.format(user_input[i])
+    query = query + '''
+    union
+    select * from artists where aid IN (SELECT aid FROM perform WHERE perform.sid IN (SELECT sid FROM songs WHERE title like '%{0}%'))
+    '''.format(user_input[0])
+    for i in range(1, len(user_input)):
+        query = query + '''
+    union
+    select * from artists where aid IN (SELECT aid FROM perform WHERE perform.sid IN (SELECT sid FROM songs WHERE title like '%{0}%'))
+    '''.format(user_input[i])
+    
+    cursor.execute(query)
+    results = cursor.fetchall()
+    
+    def orderOutput(results):
+        output = []
+        for i in range(len(results)):
+            output.append([0, results[i]])
+        for i in range(len(results)):
+            for j in range(len(user_input)):
+                if user_input[j].lower() in results[i][1].lower():
+                    output[i][0] += 1
+        output.sort(reverse = True)
+        return output
+    
+    print("Search Results:")
+    results = orderOutput(results)
+    selectable_AID = select_AID(results)
+    
+    for i in range(len(results)):
+        if i < 5:
+            print(results[i][1][0], results[i][1][1], results[i][1][2])
+    
+    if len(selectable_AID) > 0:
+        select_artist(selectable_AID)
+   
+    
+    connection.commit()
+ 
+#function for selecting an artist
+
+def select_artist(results):
+    global connection, cursor
+    '''
+    --given an artist id, return the sid, title, and duration of all the artist's song
+    
+    '''
+    def select_A_SID(results):
+        sid = []
+        for i in range(len(results)):
+                sid.append(results[i][0])
+        return sid
+    
+    aid = input("Enter the aid of the artist you would like to select: ")
+    cursor.execute('''
+    SELECT sid, title, duration FROM songs WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}")
+    '''.format(aid))
+    results = cursor.fetchall()
+    selectable_SIDs = select_A_SID(results)
+    print("Songs: ")
+    for row in results:
+        print(row[0], row[1], row[2])
+    connection.commit()
+>>>>>>> Stashed changes
+    
+    print(selectable_SIDs)
+    if len(selectable_SIDs) > 0:
+        song_action(selectable_SIDs)
+
+
+#defines tables and inserts data
     
 def define_tables():
     global connection, cursor
