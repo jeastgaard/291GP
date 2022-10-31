@@ -1,6 +1,7 @@
 import os
 import hashlib
-
+import pwinput
+import maskpass
 """ hash_password will encode the given string.
 Intended to be used so that a users password
 can be stored securely."""
@@ -57,7 +58,8 @@ class AuthenticationInterface:
     def get_authentication(self):
         while True:
             user_name = input("\n\nPlease Enter Your Username: \n")
-            user_password = input("Please Enter Your Password:\n")
+            user_password = maskpass.askpass(mask="*")
+            # user_password = pwinput.pwinput(prompt='Password: ', mask='*')
             user_password = hash_password(user_password)
             self.cursor.execute('''
             SELECT * FROM users WHERE uid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )

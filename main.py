@@ -23,7 +23,7 @@ def close_database():
 
 
 if __name__ == '__main__':
-    db_path = './project.db'
+    db_path = './project1.db'
     authenticated = False;
     create_connection(db_path)
 
@@ -31,6 +31,8 @@ if __name__ == '__main__':
     print('''Welcome to the First Group Project's Song Player!\n
     Please be aware, we don't actually play any music....''')
 
+
+    # <todo> add check that aid cannot be converted to int.
     while not authenticated:
         login_choice = input("Login (1) or Sign Up(2)? (Q) to quite\n")
 
@@ -49,7 +51,8 @@ if __name__ == '__main__':
                     # Go into either artist interface or User interface based on the choice of user.
                     if choice_of_interface == '1':
                         # Launch the user interface here.
-                        print("Debug:: You chose user.")
+                        user_interface = userInterface.UserInterface(cursor, connection, user_info[0])
+                        user_interface.launch_home_screen()
                         break
                     elif choice_of_interface == '2':
                         # Launch the artist interface here.
@@ -59,7 +62,8 @@ if __name__ == '__main__':
                         print("That was not a valid choice. Please try again!\n\n")
             elif len(user_info) > 0:
                 # Launch the user here
-                print("You are a user")
+                user_interface = userInterface.UserInterface( cursor, connection, user_info[0] )
+                user_interface.launch_home_screen()
             elif len(artist_info) > 0:
                 # Launch the artist interface here
                 print("You are an artist")

@@ -15,12 +15,12 @@ cursor = None
 
 def main():
     global connection, cursor
-    path = './project14.db'
+    path = './project1.db'
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
     
-    #define_tables()
-    #insert_data()
+    define_tables()
+    insert_data()
     
     
     
@@ -28,7 +28,7 @@ def main():
     #search_songs_Playlists()
     
     #test 2: search for an artist
-    search_artist()
+    # search_artist()
     
     #test 3: artist actions
     #artist_action()
@@ -1649,7 +1649,7 @@ insert into perform values ('a1', 2),
 
 '''
 
-    cursor.execute(insert_users)
+    # cursor.execute(insert_users)
     cursor.execute(insert_songs)
     cursor.execute(insert_sessions)
     cursor.execute(insert_listen)
@@ -1659,5 +1659,5 @@ insert into perform values ('a1', 2),
     cursor.execute(insert_perform)
     connection.commit()
    
-    
+
 main()
