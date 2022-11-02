@@ -12,10 +12,10 @@ def clear_screen():
         _ = system('clear')
 
 class ArtistInterface:
-    def __init__(self, cursor, connection, user_info):
+    def __init__(self, cursor, connection, artist_info):
         self.cursor = cursor
         self.connection = connection
-        self.user_info = user_info
+        self.artist_info = artist_info
     def launch_home_screen(self, message = None):
         clear_screen()
         if message is not None:
@@ -55,7 +55,7 @@ class ArtistInterface:
     def add_song(self):
         global connection, cursor
         #test uid
-        aid = self.user_info[0]
+        aid = self.artist_info[0]
         
         #set sid to the size of the songs table + 1
         cursor.execute('''

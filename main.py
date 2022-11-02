@@ -3,6 +3,7 @@ import authentication
 import userInterface
 import artistInterface
 
+
 cursor = None
 connection = None
 
@@ -57,6 +58,7 @@ if __name__ == '__main__':
                     elif choice_of_interface == '2':
                         # Launch the artist interface here.
                         print("Debug:: You chose artist.")
+                        artist_interface
                         break
                     else:
                         print("That was not a valid choice. Please try again!\n\n")
@@ -67,6 +69,8 @@ if __name__ == '__main__':
             elif len(artist_info) > 0:
                 # Launch the artist interface here
                 print("You are an artist")
+                artist_interface = artistInterface.ArtistInterface( cursor, connection, artist_info[0] )
+                artist_interface.launch_home_screen()
 
         elif login_choice == '2':
             auth_interface.create_new_user()
