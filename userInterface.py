@@ -15,15 +15,21 @@ def clear_screen():
 
 def order_output(results, user_input):
     output = []
+    
+    
     for i in range(len(results)):
         output.append([0, results[i]])
+        
     for i in range(len(results)):
         for j in range(len(user_input)):
             if user_input[j].lower() in results[i][1].lower():
                 output[i][0] += 1
+                
     output.sort(reverse=True)
     return output
 
+
+    
 
 def select_key_id(results):
     sid = []

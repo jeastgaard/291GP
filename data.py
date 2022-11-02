@@ -19,8 +19,8 @@ def main():
     connection = sqlite3.connect(path)
     cursor = connection.cursor()
     
-    define_tables()
-    insert_data()
+    #define_tables()
+    #insert_data()
     
     
     
@@ -31,7 +31,7 @@ def main():
     # search_artist()
     
     #test 3: artist actions
-    #artist_action()
+    artist_action()
     
     
     connection.commit()
@@ -109,9 +109,9 @@ def search_songs_Playlists():
         connection.commit()
     
     
-    #tableUpdate()
-    #add_Song_total_playlists()
-    #add_Playlist_total_song_duration()
+    tableUpdate()
+    add_Song_total_playlists()
+    add_Playlist_total_song_duration()
     
     
     user_input = input("search for songs or playlists: ")
@@ -283,7 +283,7 @@ def artist_action():
     def add_song():
           global connection, cursor
           #test uid
-          aid = 'a1'
+          aid = 'a9'
           
           #set sid to the size of the songs table + 1
           cursor.execute('''
@@ -307,38 +307,83 @@ def artist_action():
           '''.format(aid))
           results = cursor.fetchall()
           aid = results[0][0]
-          #insert the song into the songs table
+          # check if a song with the same title and performed by the same artist exists
           cursor.execute('''
-          INSERT INTO songs (sid, title, duration, type)
-          VALUES ({0}, "{1}", {2}, "song")
-          '''.format(sid, title, duration))
-          #insert the artist into the perform table
-          cursor.execute('''
-          INSERT INTO perform (aid, sid)
-          VALUES ("{0}", {1})
-          '''.format(aid, sid))
-          connection.commit()
-          #ask if the artist wants to add any other artists to the song
-          add_more_artists = input("Would you like to add any other artists to this song? (y/n): ")
-          if add_more_artists == "y":
-              add_more_artists = True
+          SELECT * FROM songs WHERE title like '{0}' AND sid IN (SELECT sid FROM perform WHERE aid like '{1}')
+          '''.format(title.lower(), aid))
+          results = cursor.fetchall()
+         
+          if len(results) > 0:
+            artist_choice = input("would you still like to add this song despite the conflict? (1/2): ")
+            if artist_choice == "1":
+                #insert the song into the songs table
+                cursor.execute('''
+                INSERT INTO songs (sid, title, duration, type)
+                VALUES ({0}, "{1}", {2}, "song")
+                '''.format(sid, title, duration))
+                #insert the artist into the perform table
+                cursor.execute('''
+                INSERT INTO perform (aid, sid)
+                VALUES ("{0}", {1})
+                '''.format(aid, sid))
+                connection.commit()
+                #ask if the artist wants to add any other artists to the song
+                add_more_artists = input("Would you like to add any other artists to this song? (y/n): ")
+                if add_more_artists == "y":
+                    add_more_artists = True
+                else:
+                    add_more_artists = False
+                while add_more_artists == True:
+                    #ask for the aid of the artist to be added
+                    aid = input("Enter the aid of the artist you would like to add: ")
+                    #insert the artist into the perform table
+                    cursor.execute('''
+                    INSERT INTO perform (aid, sid)
+                    VALUES ({0}, {1})
+                    '''.format(aid, sid))
+                    connection.commit()
+                    #ask if the artist wants to add any other artists to the song
+                    add_more_artists = input("Would you like to add any other artists to this song? (y/n):")
+                    if add_more_artists == "y":
+                        add_more_artists = True
+                    else:
+                        add_more_artists = False
+            else:
+                print("Song not added")
           else:
-              add_more_artists = False
-          while add_more_artists == True:
-              #ask for the aid of the artist to be added
-              aid = input("Enter the aid of the artist you would like to add: ")
-              #insert the artist into the perform table
-              cursor.execute('''
-              INSERT INTO perform (aid, sid)
-              VALUES ({0}, {1})
-              '''.format(aid, sid))
-              connection.commit()
-              #ask if the artist wants to add any other artists to the song
-              add_more_artists = input("Would you like to add any other artists to this song? (y/n):")
-              if add_more_artists == "y":
-                  add_more_artists = True
-              else:
-                  add_more_artists = False
+               #insert the song into the songs table
+                cursor.execute('''
+                INSERT INTO songs (sid, title, duration, type)
+                VALUES ({0}, "{1}", {2}, "song")
+                '''.format(sid, title, duration))
+                #insert the artist into the perform table
+                cursor.execute('''
+                INSERT INTO perform (aid, sid)
+                VALUES ("{0}", {1})
+                '''.format(aid, sid))
+                connection.commit()
+                #ask if the artist wants to add any other artists to the song
+                add_more_artists = input("Would you like to add any other artists to this song? (y/n): ")
+                if add_more_artists == "y":
+                    add_more_artists = True
+                else:
+                    add_more_artists = False
+                while add_more_artists == True:
+                    #ask for the aid of the artist to be added
+                    aid = input("Enter the aid of the artist you would like to add: ")
+                    #insert the artist into the perform table
+                    cursor.execute('''
+                    INSERT INTO perform (aid, sid)
+                    VALUES ({0}, {1})
+                    '''.format(aid, sid))
+                    connection.commit()
+                    #ask if the artist wants to add any other artists to the song
+                    add_more_artists = input("Would you like to add any other artists to this song? (y/n):")
+                    if add_more_artists == "y":
+                        add_more_artists = True
+                    else:
+                        add_more_artists = False
+        
           connection.commit()                   
     
     
@@ -373,9 +418,9 @@ def artist_action():
         for row in results:
             print(row[0], row[1], row[2], row[3])
         
-    #add_song()
+    add_song()
     #show all songs by the artist
-    top_3_stats()
+    #top_3_stats()
        
 #function for searching for artists
 def search_artist():
