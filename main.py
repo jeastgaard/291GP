@@ -16,18 +16,23 @@ def clear_screen():
     else:
         _ = system('clear')
 
+
 def create_connection(path):
     global connection, cursor
-    # <todo> Add some error checking here!!
-    connection = sqlite3.connect(path)
-    cursor = connection.cursor()
+    try:
+        connection = sqlite3.connect(path)
+        cursor = connection.cursor()
+    except sqlite3.Error as e:
+        print(e)
 
 
 def close_database():
-    # <todo> Add some error checking here!!
     global connection
-    connection.commit()
-    connection.close()
+    try:
+        connection.commit()
+        connection.close()
+    except sqlite3.Error as e:
+        print(e)
 
 
 
@@ -42,8 +47,6 @@ if __name__ == '__main__':
     print('''Welcome to the First Group Project's Song Player!\n
     Please be aware, we don't actually play any music....''')
 
-
-    # <todo> add check that aid cannot be converted to int.
     while not authenticated:
         login_choice = input("Login (1) or Sign Up(2)? (Q) to quite\n")
 
@@ -67,7 +70,6 @@ if __name__ == '__main__':
                         break
                     elif choice_of_interface == '2':
                         # Launch the artist interface here.
-                        print("Debug:: You chose artist.")
                         artist_interface = artistInterface.ArtistInterface(cursor, connection, artist_info[0])
                         artist_interface.launch_home_screen()
                         break

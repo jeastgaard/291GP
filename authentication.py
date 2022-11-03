@@ -2,6 +2,7 @@ import os
 import hashlib
 import getpass
 from os import system, name
+import sqlite3
 """ hash_password will encode the given string.
 Intended to be used so that a users password
 can be stored securely."""
@@ -57,35 +58,44 @@ class AuthenticationInterface:
                 elif confirm.lower() == 'q':
                     return
         password = hash_password(input("Please enter a password:\n "))
-        self.cursor.execute(add_user_query, {'uid': username, 'name': name, 'pwd': password})
-        self.connection.commit()
+        try:
+            self.cursor.execute(add_user_query, {'uid': username, 'name': name, 'pwd': password})
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(e)
         # todo Add error catching here
         clear_screen()
         print("User has been created successfully!")
 
     def get_authentication(self):
-        while True:
-            user_name = input("\n\nPlease Enter Your Username: \n")
-            user_password = getpass.getpass()
-            # user_password = pwinput.pwinput(prompt='Password: ', mask='*')
-            user_password = hash_password(user_password)
-            self.cursor.execute('''
-            SELECT * FROM users WHERE uid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )
-            users = self.cursor.fetchall()
-            self.cursor.execute('''
-            SELECT * FROM artists WHERE aid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )
-            artists = self.cursor.fetchall()
-            if len(users) != 1 and len(artists) != 1:
-                print("User could not be authenticated.")
-                return [], []
-            else:
-                return users, artists
+        try:
+            while True:
+                user_name = input("\n\nPlease Enter Your Username: \n")
+                user_password = getpass.getpass()
+                # user_password = pwinput.pwinput(prompt='Password: ', mask='*')
+                user_password = hash_password(user_password)
+                self.cursor.execute('''
+                SELECT * FROM users WHERE uid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )
+                users = self.cursor.fetchall()
+                self.cursor.execute('''
+                SELECT * FROM artists WHERE aid = :uname AND pwd = :pw;''', {'uname': user_name, 'pw': user_password}, )
+                artists = self.cursor.fetchall()
+                if len(users) != 1 and len(artists) != 1:
+                    print("User could not be authenticated.")
+                    return [], []
+                else:
+                    return users, artists
+        except sqlite3.Error as e:
+            print(e)
 
     def load_all_names(self):
-        self.cursor.execute('''
-        SELECT uid FROM users;''')
-        users = self.cursor.fetchall()
-        self.cursor.execute('''
-        SELECT aid FROM artists;''')
-        artists = self.cursor.fetchall()
-        return users, artists
+        try:
+            self.cursor.execute('''
+            SELECT uid FROM users;''')
+            users = self.cursor.fetchall()
+            self.cursor.execute('''
+            SELECT aid FROM artists;''')
+            artists = self.cursor.fetchall()
+            return users, artists
+        except sqlite3.Error as e:
+            print(e)

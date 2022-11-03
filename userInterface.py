@@ -104,45 +104,48 @@ class UserInterface:
             print(e)
 
     def log_user_out(self):
-
-        self.cursor.execute('''
-                    UPDATE sessions
-                    SET end = '{2}'
-                    WHERE uid = '{0}' AND sno = {1}
-                    '''.format(self.user_info[0], self.sessionNumber, self.sessionEnd))
-        self.connection.commit()
+        try:
+            self.cursor.execute('''
+                        UPDATE sessions
+                        SET end = '{2}'
+                        WHERE uid = '{0}' AND sno = {1}
+                        '''.format(self.user_info[0], self.sessionNumber, self.sessionEnd))
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(e)
 
     def search_songs(self):
-
-        user_input = input("Please enter song.....\n").split()
-        query = '''
-                    select * from songs where title like '%{0}%'
-                    '''.format(user_input[0])
-        for i in range(1, len(user_input)):
+        try:
+            user_input = input("Please enter song.....\n").split()
+            query = '''
+                        select * from songs where title like '%{0}%'
+                        '''.format(user_input[0])
+            for i in range(1, len(user_input)):
+                query = query + '''
+                        union
+                        select * from songs where title like '%{0}%'
+                        '''.format(user_input[i])
             query = query + '''
-                    union
-                    select * from songs where title like '%{0}%'
-                    '''.format(user_input[i])
-        query = query + '''
-                    union
-                    select * from playlists where title like '%{0}%'
-                    '''.format(user_input[0])
-        for i in range(1, len(user_input)):
-            query = query + '''
-                    union
-                    select * from playlists where title like '%{0}%'
-                    '''.format(user_input[i])
+                        union
+                        select * from playlists where title like '%{0}%'
+                        '''.format(user_input[0])
+            for i in range(1, len(user_input)):
+                query = query + '''
+                        union
+                        select * from playlists where title like '%{0}%'
+                        '''.format(user_input[i])
 
-        self.cursor.execute(query)
-        results = order_output(self.cursor.fetchall(), user_input)
-        user_selection = self.song_choices(results, select_key_id(results))
-        if user_selection is not None:
-            self.song_action(user_selection)
-        else:
-            self.launch_home_screen("No results found or quite command heard")
+            self.cursor.execute(query)
+            results = order_output(self.cursor.fetchall(), user_input)
+            user_selection = self.song_choices(results, select_key_id(results))
+            if user_selection is not None:
+                self.song_action(user_selection)
+            else:
+                self.launch_home_screen("No results found or quite command heard")
+        except sqlite3.Error as e:
+            print(e)
 
     def song_choices(self, results, possible_ids):
-        # <todo> Add no results
         if len(results) == 0:
             return None
         playlist_ids = []
@@ -171,15 +174,18 @@ class UserInterface:
             elif user_choice.isdigit():
                 if int(user_choice) in possible_ids:
                     if int(user_choice) in playlist_ids:
-                        self.cursor.execute('''
-                                        SELECT sid, title, duration
-                                        FROM songs
-                                        WHERE sid IN (SELECT sid FROM plinclude WHERE pid = {0})
-                                        '''.format(user_choice))
-                        results = self.cursor.fetchall()
-                        results = order_output( results )
-                        possible_ids = select_key_id(results)
-                        user_choice = self.song_choices(results,possible_ids )
+                        try:
+                            self.cursor.execute('''
+                                            SELECT sid, title, duration
+                                            FROM songs
+                                            WHERE sid IN (SELECT sid FROM plinclude WHERE pid = {0})
+                                            '''.format(user_choice))
+                            results = self.cursor.fetchall()
+                            results = order_output( results )
+                            possible_ids = select_key_id(results)
+                            user_choice = self.song_choices(results,possible_ids )
+                        except sqlite3.Error as e:
+                            print(e)
                     return user_choice
             elif user_choice.lower() == 'q':
                 return None
@@ -200,163 +206,167 @@ class UserInterface:
         -- 3) Add the song to a playlist
             -- when adding a song to a new playlist, a new playlist should be created with a unique id (created by the system) and the uid set to the user who created it
         '''
-        song_choice = int(user_selection)
-        uid = self.user_info[0]
+        try:
+            song_choice = int(user_selection)
+            uid = self.user_info[0]
 
-        print("1) Listen to it")
-        print("2) See more information about the song")
-        print("3) Add the song to a playlist")
-        print("4) back to search Results")
-        action = int(input("What would you like to do? (enter the number of your choice): "))
-        if action == 1:
-            if self.sessionStart is None:
-                self.start_new_session()
+            print("1) Listen to it")
+            print("2) See more information about the song")
+            print("3) Add the song to a playlist")
+            print("4) back to search Results")
+            action = int(input("What would you like to do? (enter the number of your choice): "))
+            if action == 1:
+                if self.sessionStart is None:
+                    self.start_new_session()
 
-            self.cursor.execute('''
-                                    SELECT * FROM listen
-                                    WHERE uid = '{0}' AND sid = '{1}' AND sno = {2}
-                                    '''.format(uid, song_choice, self.sessionNumber))
-            listen = self.cursor.fetchall()
-            if len(listen) == 0:
                 self.cursor.execute('''
-                                        INSERT INTO listen (uid, sno, sid, cnt)
-                                        VALUES ('{0}', {2}, '{1}', 1)
+                                        SELECT * FROM listen
+                                        WHERE uid = '{0}' AND sid = '{1}' AND sno = {2}
                                         '''.format(uid, song_choice, self.sessionNumber))
-            else:
-                self.cursor.execute('''
-                                        UPDATE listen
-                                        SET cnt = cnt + 1
-                                        WHERE uid = '{0}' AND sid = '{1}' AND sno={2}
-                                        '''.format(uid, song_choice, self.sessionNumber))
+                listen = self.cursor.fetchall()
+                if len(listen) == 0:
+                    self.cursor.execute('''
+                                            INSERT INTO listen (uid, sno, sid, cnt)
+                                            VALUES ('{0}', {2}, '{1}', 1)
+                                            '''.format(uid, song_choice, self.sessionNumber))
+                else:
+                    self.cursor.execute('''
+                                            UPDATE listen
+                                            SET cnt = cnt + 1
+                                            WHERE uid = '{0}' AND sid = '{1}' AND sno={2}
+                                            '''.format(uid, song_choice, self.sessionNumber))
 
-            self.connection.commit()
-
-            self.launch_home_screen("Song added to listening history")
-        elif action == 2:
-            self.cursor.execute('''
-            SELECT * FROM songs WHERE sid = {0}
-            '''.format(song_choice))
-
-            results = self.cursor.fetchall()
-            print("Song Name:")
-            for row in results:
-                print(row[1])
-            self.cursor.execute('''
-            SELECT * FROM artists WHERE aid IN (SELECT aid FROM perform WHERE sid = {0})
-            '''.format(song_choice))
-            results = self.cursor.fetchall()
-            print("Artists: ")
-            for row in results:
-                print(row[1])
-            self.cursor.execute('''
-            SELECT * FROM playlists WHERE pid IN (SELECT pid FROM plinclude WHERE sid = {0})
-            '''.format(song_choice))
-            results = self.cursor.fetchall()
-            print("Playlists: ")
-            for row in results:
-                print(row[1])
-            input("Press Enter to go back to main screen")
-            self.launch_home_screen()
-        elif action == 3:
-            print("User Id", uid)
-            self.cursor.execute('''
-            SELECT * FROM playlists WHERE uid = '{0}'
-            '''.format(uid))
-            results = self.cursor.fetchall()
-            print("Existing Playlists: ")
-            for row in results:
-                print(row[0], row[1])
-
-            new_playlist = input("Would you like to create a new playlist? (y/n): ")
-            if new_playlist == "y":
-                # set pid to the size of the playlists table + 1
-                self.cursor.execute('''
-                SELECT * FROM playlists
-                ''')
-                results = self.cursor.fetchall()
-                pid = len(results) + 1
-                new_playlist_name = input("Enter a name for your new playlist: ")
-                self.cursor.execute('''
-                INSERT INTO playlists (pid, title, uid)
-                VALUES ({0}, "{1}", "{2}")
-                '''.format(pid, new_playlist_name, uid))
                 self.connection.commit()
-                print("Song added to new playlist")
-            if new_playlist == "n":
-                pid = input("Enter the pid of the playlist you want to add the song to: ")
-                # check the largest sorder in the playlist and add 1 to it
 
-                self.cursor.execute(
-                    '''SELECT * FROM plinclude WHERE pid = {0}'''.format(pid))
-                results = self.cursor.fetchall()
-                sorder = len(results) + 1
+                self.launch_home_screen("Song added to listening history")
+            elif action == 2:
                 self.cursor.execute('''
-                INSERT OR IGNORE INTO plinclude (pid, sid, sorder)
-                VALUES ({0}, {1}, {2})
-                '''.format(pid, song_choice, sorder))
-                self.connection.commit()
-                print("Song added to playlist")
-            self.launch_home_screen()
+                SELECT * FROM songs WHERE sid = {0}
+                '''.format(song_choice))
 
-        elif action == 4:
-            self.launch_home_screen()
+                results = self.cursor.fetchall()
+                print("Song Name:")
+                for row in results:
+                    print(row[1])
+                self.cursor.execute('''
+                SELECT * FROM artists WHERE aid IN (SELECT aid FROM perform WHERE sid = {0})
+                '''.format(song_choice))
+                results = self.cursor.fetchall()
+                print("Artists: ")
+                for row in results:
+                    print(row[1])
+                self.cursor.execute('''
+                SELECT * FROM playlists WHERE pid IN (SELECT pid FROM plinclude WHERE sid = {0})
+                '''.format(song_choice))
+                results = self.cursor.fetchall()
+                print("Playlists: ")
+                for row in results:
+                    print(row[1])
+                input("Press Enter to go back to main screen")
+                self.launch_home_screen()
+            elif action == 3:
+                print("User Id", uid)
+                self.cursor.execute('''
+                SELECT * FROM playlists WHERE uid = '{0}'
+                '''.format(uid))
+                results = self.cursor.fetchall()
+                print("Existing Playlists: ")
+                for row in results:
+                    print(row[0], row[1])
+
+                new_playlist = input("Would you like to create a new playlist? (y/n): ")
+                if new_playlist == "y":
+                    # set pid to the size of the playlists table + 1
+                    self.cursor.execute('''
+                    SELECT * FROM playlists
+                    ''')
+                    results = self.cursor.fetchall()
+                    pid = len(results) + 1
+                    new_playlist_name = input("Enter a name for your new playlist: ")
+                    self.cursor.execute('''
+                    INSERT INTO playlists (pid, title, uid)
+                    VALUES ({0}, "{1}", "{2}")
+                    '''.format(pid, new_playlist_name, uid))
+                    self.connection.commit()
+                    print("Song added to new playlist")
+                if new_playlist == "n":
+                    pid = input("Enter the pid of the playlist you want to add the song to: ")
+                    # check the largest sorder in the playlist and add 1 to it
+
+                    self.cursor.execute(
+                        '''SELECT * FROM plinclude WHERE pid = {0}'''.format(pid))
+                    results = self.cursor.fetchall()
+                    sorder = len(results) + 1
+                    self.cursor.execute('''
+                    INSERT OR IGNORE INTO plinclude (pid, sid, sorder)
+                    VALUES ({0}, {1}, {2})
+                    '''.format(pid, song_choice, sorder))
+                    self.connection.commit()
+                    print("Song added to playlist")
+                self.launch_home_screen()
+
+            elif action == 4:
+                self.launch_home_screen()
+        except sqlite3.Error as e:
+            print(e)
 
 
     def search_artist(self):
-        user_input = input("search for artists: ")
+        try:
+            user_input = input("search for artists: ")
 
-        # user_input = "love cold fire"
+            # user_input = "love cold fire"
 
-        user_input = user_input.split()
-        query = '''
-            select * from artists where name like '%{0}%'
-            '''.format(user_input[0])
-        for i in range(1, len(user_input)):
+            user_input = user_input.split()
+            query = '''
+                select * from artists where name like '%{0}%'
+                '''.format(user_input[0])
+            for i in range(1, len(user_input)):
+                query = query + '''
+                union
+                select * from artists where name like '%{0}%'
+                '''.format(user_input[i])
             query = query + '''
-            union
-            select * from artists where name like '%{0}%'
-            '''.format(user_input[i])
-        query = query + '''
-            union
-            select * from artists where aid IN (SELECT aid FROM perform WHERE perform.sid IN (SELECT sid FROM songs WHERE title like '%{0}%'))
-            '''.format(user_input[0])
-        for i in range(1, len(user_input)):
-            query = query + '''
-            union
-            select * from artists where aid IN (SELECT aid FROM perform WHERE perform.sid IN (SELECT sid FROM songs WHERE title like '%{0}%'))
-            '''.format(user_input[i])
+                union
+                select * from artists where aid IN (SELECT aid FROM perform WHERE perform.sid IN (SELECT sid FROM songs WHERE title like '%{0}%'))
+                '''.format(user_input[0])
+            for i in range(1, len(user_input)):
+                query = query + '''
+                union
+                select * from artists where aid IN (SELECT aid FROM perform WHERE perform.sid IN (SELECT sid FROM songs WHERE title like '%{0}%'))
+                '''.format(user_input[i])
 
-        self.cursor.execute(query)
-        results = self.cursor.fetchall()
-        results = order_output(results, user_input)
-        selectable_AID = select_key_id(results)
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+            results = order_output(results, user_input)
+            selectable_AID = select_key_id(results)
 
-        print("Results:")
-        if len(results) == 0:
-            clear_screen()
-            print("No Artist Found")
-            self.launch_home_screen()
-        else:
-            selection_choice = self.artist_choices(results, selectable_AID)
-            if selection_choice is None:
+            print("Results:")
+            if len(results) == 0:
+                clear_screen()
+                print("No Artist Found")
                 self.launch_home_screen()
             else:
-                self.cursor.execute('''
-                    SELECT sid, title, duration FROM songs WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}")
-                    '''.format(selection_choice))
-                results = self.cursor.fetchall()
-                results = order_output( results )
-
-                user_selection = self.song_choices(results, select_key_id(results))
-
-                if user_selection is not None:
-                    self.song_action(user_selection)
-                else:
+                selection_choice = self.artist_choices(results, selectable_AID)
+                if selection_choice is None:
                     self.launch_home_screen()
+                else:
+                    self.cursor.execute('''
+                        SELECT sid, title, duration FROM songs WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}")
+                        '''.format(selection_choice))
+                    results = self.cursor.fetchall()
+                    results = order_output( results )
+
+                    user_selection = self.song_choices(results, select_key_id(results))
+
+                    if user_selection is not None:
+                        self.song_action(user_selection)
+                    else:
+                        self.launch_home_screen
+        except sqlite3.Error as e:
+            print(e)
 
 
-        # if len(selectable_AID) > 0:
-        #     select_artist(selectable_AID)
 
     def artist_choices(self, results, possible_ids):
         start_index = 0
