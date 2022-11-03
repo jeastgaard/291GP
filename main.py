@@ -2,11 +2,19 @@ import sqlite3
 import authentication
 import userInterface
 import artistInterface
+from os import system, name
 
 
 cursor = None
 connection = None
 
+def clear_screen():
+    if name == 'nt':
+        _ = system('cls')
+
+        # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
 
 def create_connection(path):
     global connection, cursor
@@ -24,8 +32,10 @@ def close_database():
 
 
 if __name__ == '__main__':
-    db_path = './project1.db'
-    authenticated = False;
+    db_path = input("Please Enter the DB name you want to use:\n"
+                    "Format: ./<name>.db\n")
+    clear_screen()
+    authenticated = False
     create_connection(db_path)
 
     auth_interface = authentication.AuthenticationInterface(cursor, connection)
