@@ -1,5 +1,6 @@
 from os import system, name
 from datetime import datetime, timezone
+import sqlite3
 import time
 import random
 
@@ -13,17 +14,18 @@ def clear_screen():
         _ = system('clear')
 
 
-def order_output(results, user_input):
+def order_output(results, user_input=None):
     output = []
     
     
     for i in range(len(results)):
         output.append([0, results[i]])
-        
-    for i in range(len(results)):
-        for j in range(len(user_input)):
-            if user_input[j].lower() in results[i][1].lower():
-                output[i][0] += 1
+
+    if user_input is not None:
+        for i in range(len(results)):
+            for j in range(len(user_input)):
+                if user_input[j].lower() in results[i][1].lower():
+                    output[i][0] += 1
                 
     output.sort(reverse=True)
     return output
@@ -36,7 +38,6 @@ def select_key_id(results):
     for i in range(len(results)):
         sid.append(results[i][1][0])
     return sid
-
 
 def select_snos(results):
     sid = []
@@ -51,11 +52,14 @@ class UserInterface:
         self.cursor = cursor
         self.connection = connection
         self.user_info = user_info
-        self.sessionStart = 0
-        self.sessionEnd = 0
+        self.sessionStart = None
+        self.sessionEnd = 'NULL'
+        self.sessionNumber = None
+
 
     def launch_home_screen(self, message=None):
         clear_screen()
+
         if message is not None:
             print(message)
         # <todo> add option to search for songs/playlists or artists and end session.
@@ -63,31 +67,49 @@ class UserInterface:
                             '''\nMake a selection:
                             (1): Search for songs/playlists
                             (2): Search for artists
-                            (3): End session\n''')
+                            (3): Start Session
+                            (4): End session\n''')
         if user_choice == '1':
             self.search_songs()
         elif user_choice == '2':
             self.search_artist()
         elif user_choice == '3':
-            if self.sessionStart != 0:
+            self.start_new_session()
+            self.launch_home_screen()
+        elif user_choice == '4':
+            if self.sessionStart is not None:
                 self.sessionEnd = datetime.now(timezone.utc)
                 self.log_user_out()
         else:
             self.launch_home_screen()
 
+    def start_new_session(self):
+        try:
+            self.sessionStart = datetime.now(timezone.utc)
+            self.cursor.execute('''
+                SELECT sno FROM sessions WHERE uid = '{0}';'''.format(self.user_info[0]))
+            already_generated_snos = select_snos(self.cursor.fetchall())
+
+            self.sessionNumber = random.randint(0, 9223372036854775807)
+
+            while self.sessionNumber in already_generated_snos:
+                self.sessionNumber = random.randint(0, 9223372036854775807)
+
+            self.cursor.execute('''
+                                        INSERT INTO sessions (uid, sno, start, end)
+                                        VALUES ('{0}',{1},'{2}','{3}')
+                                        '''.format(self.user_info[0], self.sessionNumber, self.sessionStart, self.sessionEnd))
+            self.connection.commit()
+        except sqlite3.Error as e:
+            print(e)
+
     def log_user_out(self):
-        self.cursor.execute('''
-        SELECT sno FROM sessions WHERE uid = '{0}';'''.format(self.user_info[0]))
-        already_generated_snos = select_snos(self.cursor.fetchall())
-        new_sno = random.randint(0, 9223372036854775807)
-
-        while new_sno in already_generated_snos:
-            new_sno = random.randint(0, 9223372036854775807)
 
         self.cursor.execute('''
-                    INSERT INTO sessions (uid, sno, start, end)
-                    VALUES ('{0}',{1},'{2}','{3}')
-                    '''.format(self.user_info[0], new_sno, self.sessionStart, self.sessionEnd))
+                    UPDATE sessions
+                    SET end = '{2}'
+                    WHERE uid = '{0}' AND sno = {1}
+                    '''.format(self.user_info[0], self.sessionNumber, self.sessionEnd))
         self.connection.commit()
 
     def search_songs(self):
@@ -117,10 +139,13 @@ class UserInterface:
         if user_selection is not None:
             self.song_action(user_selection)
         else:
-            self.launch_home_screen()
+            self.launch_home_screen("No results found or quite command heard")
 
     def song_choices(self, results, possible_ids):
         # <todo> Add no results
+        if len(results) == 0:
+            return None
+        playlist_ids = []
         start_index = 0
         end_index = start_index + 4 if (start_index + 4) < len(results) else len(results) - 1
         max_index = len(results) - 1
@@ -130,6 +155,7 @@ class UserInterface:
                     print(results[i][1][0], results[i][1][1], results[i][1][2], "<- Song")
                 else:
                     print(results[i][1][0], results[i][1][1], results[i][1][2], "<- Playlist")
+                    playlist_ids.append(results[i][1][0])
             print("Showing " + str(start_index + 1) + "-" + str(end_index + 1) + "/" + str(len(results)) + " results")
             user_choice = input("Enter ID of song/playlist, or 'n' for next page, 'p' for previous page\n")
             clear_screen()
@@ -144,7 +170,16 @@ class UserInterface:
                 end_index = start_index + 4 if (start_index + 4) < len(results) else max_index
             elif user_choice.isdigit():
                 if int(user_choice) in possible_ids:
-                    # <todo> Add what happens if you select a playlist.
+                    if int(user_choice) in playlist_ids:
+                        self.cursor.execute('''
+                                        SELECT sid, title, duration
+                                        FROM songs
+                                        WHERE sid IN (SELECT sid FROM plinclude WHERE pid = {0})
+                                        '''.format(user_choice))
+                        results = self.cursor.fetchall()
+                        results = order_output( results )
+                        possible_ids = select_key_id(results)
+                        user_choice = self.song_choices(results,possible_ids )
                     return user_choice
             elif user_choice.lower() == 'q':
                 return None
@@ -174,13 +209,28 @@ class UserInterface:
         print("4) back to search Results")
         action = int(input("What would you like to do? (enter the number of your choice): "))
         if action == 1:
+            if self.sessionStart is None:
+                self.start_new_session()
+
             self.cursor.execute('''
-            INSERT INTO listen (uid, sno, sid, cnt)
-            VALUES ('{0}', (SELECT COUNT(*) FROM listen WHERE uid = '{0}' AND sid = {1}) + 1, {1}, 1)
-            '''.format(uid, song_choice))
+                                    SELECT * FROM listen
+                                    WHERE uid = '{0}' AND sid = '{1}' AND sno = {2}
+                                    '''.format(uid, song_choice, self.sessionNumber))
+            listen = self.cursor.fetchall()
+            if len(listen) == 0:
+                self.cursor.execute('''
+                                        INSERT INTO listen (uid, sno, sid, cnt)
+                                        VALUES ('{0}', {2}, '{1}', 1)
+                                        '''.format(uid, song_choice, self.sessionNumber))
+            else:
+                self.cursor.execute('''
+                                        UPDATE listen
+                                        SET cnt = cnt + 1
+                                        WHERE uid = '{0}' AND sid = '{1}' AND sno={2}
+                                        '''.format(uid, song_choice, self.sessionNumber))
+
             self.connection.commit()
-            if self.sessionStart == 0:
-                self.sessionStart = datetime.now(timezone.utc)
+
             self.launch_home_screen("Song added to listening history")
         elif action == 2:
             self.cursor.execute('''
@@ -246,8 +296,11 @@ class UserInterface:
                 '''.format(pid, song_choice, sorder))
                 self.connection.commit()
                 print("Song added to playlist")
+            self.launch_home_screen()
+
         elif action == 4:
-            pass
+            self.launch_home_screen()
+
 
     def search_artist(self):
         user_input = input("search for artists: ")
@@ -279,17 +332,54 @@ class UserInterface:
         selectable_AID = select_key_id(results)
 
         print("Results:")
-        for i in range(len(results)):
-            if i < 5:
-                # <todo> Total songs performed ( add new query )
-                # <todo> Print like: | aid | name | Nationality | total songs per.|
-                # <todo> Print like: | .... | ... | ... | ...|
-                # <todo> Print like: | .... | ... | ... | ...|
-                # <todo> Print like: | .... | ... | ... | ...|
-                # <todo> Print like: | .... | ... | ... | ...|
-                # <todo> Print like: | .... | ... | ... | ...|
-                # <todo> Showing 5 of #, press........
-                print(results[i][1][0], results[i][1][1], results[i][1][2])
+        if len(results) == 0:
+            clear_screen()
+            print("No Artist Found")
+            self.launch_home_screen()
+        else:
+            selection_choice = self.artist_choices(results, selectable_AID)
+            if selection_choice is None:
+                self.launch_home_screen()
+            else:
+                self.cursor.execute('''
+                    SELECT sid, title, duration FROM songs WHERE sid IN (SELECT sid FROM perform WHERE aid = "{0}")
+                    '''.format(selection_choice))
+                results = self.cursor.fetchall()
+                results = order_output( results )
+
+                user_selection = self.song_choices(results, select_key_id(results))
+
+                if user_selection is not None:
+                    self.song_action(user_selection)
+                else:
+                    self.launch_home_screen()
+
 
         # if len(selectable_AID) > 0:
         #     select_artist(selectable_AID)
+
+    def artist_choices(self, results, possible_ids):
+        start_index = 0
+        end_index = start_index + 4 if (start_index + 4) < len(results) else len(results) - 1
+        max_index = len(results) - 1
+        while True:
+            for i in range(start_index, end_index + 1):
+                print(results[i][1][0], results[i][1][1], results[i][1][2])
+            print("Showing " + str(start_index + 1) + "-" + str(end_index + 1) + "/" + str(len(results)) + " results")
+            user_choice = input("Enter ID of song/playlist, or 'n' for next page, 'p' for previous page\n")
+            clear_screen()
+            if user_choice == 'n':
+                if max_index - end_index > 0:
+                    end_index = end_index + 5 if end_index + 5 < max_index else end_index + (
+                                len(results) - end_index) - 1
+                    start_index = len(results) - 5
+
+            elif user_choice == 'p':
+                start_index = start_index - 5 if start_index - 5 > 0 else 0
+                end_index = start_index + 4 if (start_index + 4) < len(results) else max_index
+            elif user_choice in possible_ids:
+                return user_choice
+            elif user_choice.lower() == 'q':
+                return None
+            else:
+                print("Sorry, the choice you entered could not be recognized, please try again.")

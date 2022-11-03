@@ -1,7 +1,7 @@
 import os
 import hashlib
-import pwinput
-import maskpass
+import getpass
+from os import system, name
 """ hash_password will encode the given string.
 Intended to be used so that a users password
 can be stored securely."""
@@ -12,6 +12,13 @@ def hash_password(password):
     alg.update(password.encode('utf-8'))
     return alg.hexdigest()
 
+def clear_screen():
+    if name == 'nt':
+        _ = system('cls')
+
+        # for mac and linux(here, os.name is 'posix')
+    else:
+        _ = system('clear')
 
 """ Class: AuthenticationInterface
 This class will hold the cursor and connection so that users can be
@@ -53,12 +60,13 @@ class AuthenticationInterface:
         self.cursor.execute(add_user_query, {'uid': username, 'name': name, 'pwd': password})
         self.connection.commit()
         # todo Add error catching here
+        clear_screen()
         print("User has been created successfully!")
 
     def get_authentication(self):
         while True:
             user_name = input("\n\nPlease Enter Your Username: \n")
-            user_password = maskpass.askpass(mask="*")
+            user_password = getpass.getpass()
             # user_password = pwinput.pwinput(prompt='Password: ', mask='*')
             user_password = hash_password(user_password)
             self.cursor.execute('''
