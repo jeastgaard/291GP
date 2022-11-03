@@ -58,7 +58,8 @@ if __name__ == '__main__':
                     elif choice_of_interface == '2':
                         # Launch the artist interface here.
                         print("Debug:: You chose artist.")
-                        artist_interface
+                        artist_interface = artistInterface.ArtistInterface(cursor, connection, artist_info[0])
+                        artist_interface.launch_home_screen()
                         break
                     else:
                         print("That was not a valid choice. Please try again!\n\n")
